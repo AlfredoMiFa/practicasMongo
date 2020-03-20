@@ -25,10 +25,14 @@ public class PracticasApplicationTests {
 	@Test
 	public void contextLoads() {
 		long total = 10000000;
-		Usuarios usuario = dao.getUsuario("Don Juan 5095021", total);
+		Usuarios usuario = dao.getUsuario1("Don Juan 5095021", total);
+		Usuarios usuario1 = dao.getUsuario("Don Juan 3032828", total);
+		Usuarios usuario2 = dao.getUsuario1("Don Juan 9000001", total);
+		Usuarios usuario3 = dao.getUsuario("Don Juan 4000001", total);
 		ObjectMapper mp = new ObjectMapper();
 		try {
 			log.info("Usuario: {}",mp.writeValueAsString(usuario));
+			log.info("Usuario: {}",mp.writeValueAsString(usuario1));
 		} catch (JsonProcessingException e) {
 			log.info("Exception: ",e);
 		}

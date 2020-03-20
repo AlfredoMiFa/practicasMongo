@@ -43,8 +43,7 @@ public class Busqueda implements Callable<Usuarios> {
 				Aggregation.match(Criteria.where(USER).is(user)),
 				limit(limit),
 				skip(skip));
-		log.info("Busqueda: {}",agg.toString());
-		log.info("Inicio: {}, hilo {}",LocalDateTime.now(),hilo);
+		log.info("Busqueda: {}, hora {}, hilo {}",agg.toString(),LocalDateTime.now(),hilo);
 		AggregationResults<Usuarios> rest = mongoTemplate.aggregate(agg, COLLECTION, Usuarios.class);
 		log.info("Termino {}, hilo {}",LocalDateTime.now(), hilo);
 		Usuarios usuario = rest.getMappedResults().stream().filter(Objects::nonNull).findAny().get();

@@ -107,5 +107,38 @@ public class UsuariosDAO {
 		return null;
 	}
 	
+	public Usuarios getUsuario1(String usuario, long total) {
+		int hilos = Runtime.getRuntime().availableProcessors();
+		long resto = total%hilos;
+		long cociente = total/hilos;
+		long[] lanzarHilos = new long[hilos];
+		for(int i=0;i<hilos;i++) {
+			lanzarHilos[i] = cociente;
+		}
+		lanzarHilos[0]+=resto;
+		long skipTotal = 0;
+		List<Future<Usuarios>> lista = new ArrayList<>();
+		for(int i=0;i<hilos;i++) {
+			Busqueda busqueda = new Busqueda(usuario,cociente,skipTotal,mongoTemplate,i);
+			skipTotal+=lanzarHilos[i];
+			Future<Usuarios> us = async.submit(busqueda);
+			lista.add(us);
+			try {
+				return lista.stream().filter(t->{
+					try {
+						return t.get()!=null;
+					} catch (InterruptedException | ExecutionException ex) {
+						log.info("Exception ",ex);
+					}
+					return false;
+				}).findAny().get().get();
+			} catch (InterruptedException | ExecutionException ex) {
+				log.info("Exception ",ex);
+			}
+		}
+		//return lista.stream().filter(t->t.get()!=null).findAny().get().get();
+		return null;
+	}
+	
 	
 }
