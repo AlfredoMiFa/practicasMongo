@@ -1,19 +1,21 @@
 package com.mistborn.practicas.dao;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.AsyncTaskExecutor;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
 
 import com.mistborn.practicas.entity.Usuarios;
 
-import lombok.extern.slf4j.Slf4j;
-
-@Slf4j
 @Component
 public class UsuariosDAO {
 	
@@ -22,6 +24,12 @@ public class UsuariosDAO {
 	@Autowired
 	@Qualifier(value = "primaryMongoTemplate")
 	private MongoTemplate mongoTemplate;
+	
+	@Autowired
+	private AsyncTaskExecutor async;
+	
+	private static final String USER = "userName";
+	private static final String COLLECTION = "Usuarios";
 	
 	public void insertUsers() {
 		log.info("UsuariosDAO [insertUsers]");
@@ -56,5 +64,48 @@ public class UsuariosDAO {
 		}
 		log.info("Terminamos en: {}",(System.currentTimeMillis()-inicio));
 	}
+	
+	public Usuarios getUsuario(String usuario, long total) {
+		int hilos = Runtime.getRuntime().availableProcessors();
+		long resto = total%hilos;
+		long cociente = total/hilos;
+		long[] lanzarHilos = new long[hilos];
+		for(int i=0;i<hilos;i++) {
+			lanzarHilos[i] = cociente;
+		}
+		lanzarHilos[0]+=resto;
+		long skipTotal = 0;
+		List<Future<Usuarios>> lista = new ArrayList<>();
+		for(int i=0;i<hilos;i++) {
+			if(i==0) {
+				Busqueda busqueda = new Busqueda(usuario,cociente,skipTotal,mongoTemplate,i);
+				skipTotal+=lanzarHilos[i];
+				Future<Usuarios> us = async.submit(busqueda);
+				lista.add(us);
+			}else {
+				Busqueda busqueda = new Busqueda(usuario,cociente,skipTotal,mongoTemplate,i);
+				Future<Usuarios> us = async.submit(busqueda);
+				lista.add(us);
+				skipTotal+=lanzarHilos[i];
+			}
+		}
+		//return lista.stream().filter(t->t.get()!=null).findAny().get().get();
+		
+		try {
+			return lista.stream().filter(t->{
+				try {
+					return t.get()!=null;
+				} catch (InterruptedException | ExecutionException ex) {
+					log.info("Exception ",ex);
+				}
+				return false;
+			}).findAny().get().get();
+		} catch (InterruptedException | ExecutionException ex) {
+			log.info("Exception ",ex);
+		}
+		
+		return null;
+	}
+	
 	
 }
